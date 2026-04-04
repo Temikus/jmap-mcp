@@ -2,10 +2,10 @@ name: Publish to JSR
 
 on:
   push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
     branches:
-      - main
-  release:
-    types: [published]
+      - fork
 
 jobs:
   publish:
@@ -33,4 +33,5 @@ jobs:
         run: deno check
 
       - name: Publish packages to JSR
+        if: startsWith(github.ref, 'refs/tags/')
         run: deno publish
