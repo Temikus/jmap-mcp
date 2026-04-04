@@ -265,7 +265,7 @@ export function registerEmailTools(
 ) {
   server.tool(
     "search_emails",
-    "Search emails with various filters including text search, sender/recipient filters, date ranges, and keywords. Results are paginated - use position parameter for pagination. Returns queryState for incremental sync via get_search_updates.",
+    "Search emails with filters (text, sender/recipient, dates, keywords). Returns only email IDs — use get_emails to fetch full content. Results are paginated: each response includes `total` (total matching emails), `position` (current offset), and `hasMore` (boolean). To get the next page, call again with `position` set to the current `position + ids.length`. Do NOT fetch all pages unless explicitly asked — the first page is usually sufficient. Also returns `queryState` for incremental sync via get_search_updates.",
     SearchEmailsSchema.shape,
     async (args) => {
       try {
@@ -288,10 +288,16 @@ export function registerEmailTools(
                   ids: result.ids,
                   total: result.total,
                   position: result.position,
-                  queryState: result.queryState,
-                  canCalculateChanges: result.canCalculateChanges,
+                  nextPosition: result.position + result.ids.length,
                   hasMore:
                     result.position + result.ids.length < (result.total || 0),
+                  _pagination: `Showing ${result.ids.length} of ${
+                    result.total ?? "unknown"
+                  } results (position ${result.position}–${
+                    result.position + result.ids.length - 1
+                  })`,
+                  queryState: result.queryState,
+                  canCalculateChanges: result.canCalculateChanges,
                 },
                 null,
                 2,

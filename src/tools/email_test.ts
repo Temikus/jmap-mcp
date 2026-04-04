@@ -194,4 +194,38 @@ Deno.test("search_emails returns queryState and canCalculateChanges", async () =
   assertEquals(parsed.queryState, "qs-abc");
   assertEquals(parsed.canCalculateChanges, true);
   assertEquals(parsed.ids, ["e1", "e2"]);
+  assertEquals(parsed.total, 2);
+  assertEquals(parsed.position, 0);
+  assertEquals(parsed.nextPosition, 2);
+  assertEquals(parsed.hasMore, false);
+  assertEquals(
+    parsed._pagination,
+    "Showing 2 of 2 results (position 0\u20131)",
+  );
+});
+
+Deno.test("search_emails pagination indicates hasMore when results exceed page", async () => {
+  const { client } = await setup({
+    emailQuery: () =>
+      Promise.resolve([{
+        ids: ["e1", "e2"],
+        total: 10,
+        position: 0,
+        queryState: "qs-page",
+        canCalculateChanges: true,
+      }]),
+  });
+  const result = await client.callTool({
+    name: "search_emails",
+    arguments: { query: "test", limit: 2, position: 0 },
+  });
+  const parsed = parseResponse(result);
+
+  assertEquals(parsed.hasMore, true);
+  assertEquals(parsed.nextPosition, 2);
+  assertEquals(parsed.total, 10);
+  assertEquals(
+    parsed._pagination,
+    "Showing 2 of 10 results (position 0\u20131)",
+  );
 });
