@@ -1,6 +1,6 @@
 {
-  "name": "@wyattjoh/jmap-mcp",
-  "version": "0.3.0",
+  "name": "@temikus/jmap-mcp",
+  "version": "0.4.0",
   "license": "MIT",
   "exports": "./src/mod.ts",
   "publish": {
