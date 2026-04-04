@@ -1,8 +1,8 @@
 # JMAP MCP Server
 
-[![JSR](https://jsr.io/badges/@wyattjoh/jmap-mcp)](https://jsr.io/@wyattjoh/jmap-mcp)
-[![JSR Score](https://jsr.io/badges/@wyattjoh/jmap-mcp/score)](https://jsr.io/@wyattjoh/jmap-mcp)
-[![JSR Scope](https://jsr.io/badges/@wyattjoh)](https://jsr.io/@wyattjoh)
+[![JSR](https://jsr.io/badges/@temikus/jmap-mcp)](https://jsr.io/@temikus/jmap-mcp)
+[![JSR Score](https://jsr.io/badges/@temikus/jmap-mcp/score)](https://jsr.io/@temikus/jmap-mcp)
+[![JSR Scope](https://jsr.io/badges/@temikus)](https://jsr.io/@temikus)
 
 A Model Context Protocol (MCP) server that provides tools for interacting with
 JMAP (JSON Meta Application Protocol) email servers. Built with Deno and using
@@ -14,8 +14,9 @@ library.
 ### Email Management Tools
 
 - **Search Emails**: Search emails with text queries, sender/recipient filters,
-  date ranges, and keywords
-- **Get Emails**: Retrieve specific emails by ID with full details
+  date ranges, and keywords. All filters are AND'd together.
+- **Get Emails**: Retrieve specific emails by ID with configurable property
+  selection
 - **Get Threads**: Retrieve email threads (conversation chains)
 - **Mark Emails**: Mark emails as read/unread, flagged/unflagged
 - **Move Emails**: Move emails between mailboxes
@@ -23,21 +24,31 @@ library.
 
 ### Mailbox Management
 
-- **Get Mailboxes**: List all mailboxes/folders with hierarchy support
+- **Get Mailboxes**: List all mailboxes/folders with hierarchy support. Use this
+  to find mailbox IDs needed by other tools.
+
+### Incremental Sync
+
+- **Get Email Changes**: Get IDs of emails created, updated, or destroyed since
+  a previous state (state-based delta tracking)
+- **Get Search Updates**: Get additions/removals within a previous search query
+  since its last queryState
 
 ### Email Composition
 
 - **Send Email**: Compose and send new emails with support for plain text and
   HTML
-- **Reply to Email**: Reply to existing emails with reply-all support
+- **Reply to Email**: Reply to existing emails with automatic header handling
+  and reply-all support
 
 ### Key Capabilities
 
 - Full JMAP RFC 8620/8621 compliance via jmap-jam
 - Comprehensive input validation with Zod schemas
 - Pagination support for all list operations
+- State-based incremental sync for efficient polling
 - Rich error handling and connection management
-- Functional programming patterns throughout
+- Capability-based tool registration (read-only, submission)
 - TypeScript support with strong typing
 
 ## Installation
@@ -56,23 +67,26 @@ Add the following to your agent of choice:
 ```json
 {
   "mcpServers": {
-    "fastmail": {
+    "jmap": {
       "type": "stdio",
       "command": "deno",
       "args": [
         "run",
         "--allow-net=api.fastmail.com",
         "--allow-env=JMAP_SESSION_URL,JMAP_BEARER_TOKEN,JMAP_ACCOUNT_ID",
-        "jsr:@wyattjoh/jmap-mcp@0.1.1"
+        "jsr:@temikus/jmap-mcp"
       ],
       "env": {
         "JMAP_SESSION_URL": "https://api.fastmail.com/jmap/session",
-        "JMAP_BEARER_TOKEN": "API_TOKEN"
+        "JMAP_BEARER_TOKEN": "YOUR_API_TOKEN"
       }
     }
   }
 }
 ```
+
+> Replace `api.fastmail.com` in `--allow-net` with your JMAP server's hostname
+> if not using FastMail.
 
 ## Usage
 
@@ -86,73 +100,115 @@ Add the following to your agent of choice:
 
 ### Available Tools
 
-#### `search_emails`
+#### `get_mailboxes`
 
-Search for emails with various filters.
+List mailboxes/folders with their IDs, names, and metadata. **Call this first**
+to get mailbox IDs needed by `search_emails` (`inMailbox`) and `move_emails`
+(`mailboxId`). Common names: Inbox, Drafts, Sent, Trash, Archive, Spam/Junk.
 
 **Parameters:**
 
-- `query` (optional): Text search query
+- `parentId` (optional): Filter by parent mailbox ID
+- `limit` (optional): Max results (1-200, default: 100)
+- `position` (optional): Starting position for pagination
+
+#### `search_emails`
+
+Search emails with filters. **All filters are AND'd together.** Returns only
+email IDs — use `get_emails` to fetch content. Results include `queryState` for
+incremental sync via `get_search_updates`.
+
+**Parameters:**
+
+- `query` (optional): Text search across all fields
+- `body` (optional): Search in message body only
 - `from` (optional): Filter by sender email address
 - `to` (optional): Filter by recipient email address
 - `subject` (optional): Filter by subject text
-- `inMailbox` (optional): Search within specific mailbox
-- `hasKeyword` (optional): Filter by keyword (e.g., '$seen', '$flagged')
-- `notKeyword` (optional): Exclude by keyword
-- `before` (optional): Only emails before date (ISO datetime)
-- `after` (optional): Only emails after date (ISO datetime)
+- `inMailbox` (optional): Mailbox ID to search within (get from `get_mailboxes`)
+- `hasKeyword` (optional): Filter by keyword (e.g., `$seen`, `$flagged`)
+- `notKeyword` (optional): Exclude by keyword (e.g., `$seen`, `$draft`)
+- `allInThreadHaveKeyword` (optional): All emails in thread must have keyword
+- `someInThreadHaveKeyword` (optional): At least one email in thread must have
+  keyword
+- `before` (optional): Only emails before date (ISO 8601 datetime)
+- `after` (optional): Only emails after date (ISO 8601 datetime)
 - `limit` (optional): Max results (1-100, default: 50)
 - `position` (optional): Starting position for pagination (default: 0)
 
 #### `get_emails`
 
-Retrieve specific emails by their IDs.
+Retrieve specific emails by their IDs. Use `properties` to request only what you
+need — fetching all properties returns large payloads.
 
 **Parameters:**
 
 - `ids`: Array of email IDs (1-50 IDs)
-- `properties` (optional): Specific properties to return
-
-#### `get_mailboxes`
-
-Get list of mailboxes/folders.
-
-**Parameters:**
-
-- `parentId` (optional): Filter by parent mailbox
-- `limit` (optional): Max results (1-200, default: 100)
-- `position` (optional): Starting position for pagination
+- `properties` (optional): Specific properties to return. Recommended sets:
+  - Summary: `["id", "subject", "from", "to", "receivedAt", "preview"]`
+  - Full read:
+    `["id", "subject", "from", "to", "cc", "receivedAt", "bodyValues", "textBody", "htmlBody"]`
+  - **Note:** To get body content, include `bodyValues` AND
+    `textBody`/`htmlBody`
 
 #### `get_threads`
 
-Get email threads by their IDs.
+Get email threads by their IDs. Thread IDs come from `get_emails` responses
+(`threadId` property). Returns email IDs per thread — use `get_emails` on those
+IDs to fetch content.
 
 **Parameters:**
 
 - `ids`: Array of thread IDs (1-20 IDs)
 
+#### `get_email_changes`
+
+Get IDs of emails created, updated, or destroyed since a previous state. Use the
+`state` string from a `get_emails` response.
+
+**Parameters:**
+
+- `sinceState`: State string from a previous `get_emails` response
+- `maxChanges` (optional): Max changes to return (1-500)
+- `fetchEmails` (optional): Auto-fetch full email details for changed IDs
+  (default: false)
+- `properties` (optional): Properties to fetch when `fetchEmails` is true
+
+#### `get_search_updates`
+
+Get changes within a previous search query since its `queryState`. Must use the
+same filter parameters as the original `search_emails` call.
+
+**Parameters:**
+
+- `sinceQueryState`: `queryState` from a previous `search_emails` response
+- All filter parameters from `search_emails` (must match original query)
+- `maxChanges` (optional): Max changes to return (1-500)
+
 #### `mark_emails`
 
-Mark emails with keywords (read/unread, flagged/unflagged).
+Mark emails as read/unread or flagged/unflagged.
 
 **Parameters:**
 
 - `ids`: Array of email IDs (1-100 IDs)
-- `seen` (optional): Mark as read (true) or unread (false)
-- `flagged` (optional): Mark as flagged (true) or unflagged (false)
+- `seen` (optional): Mark as read (`true`) or unread (`false`)
+- `flagged` (optional): Mark as flagged (`true`) or unflagged (`false`)
 
 #### `move_emails`
 
-Move emails to a different mailbox.
+Move emails to a different mailbox. Use `get_mailboxes` to find the target
+mailbox ID.
 
 **Parameters:**
 
 - `ids`: Array of email IDs (1-100 IDs)
-- `mailboxId`: Target mailbox ID
+- `mailboxId`: Target mailbox ID (get from `get_mailboxes`)
 
 #### `delete_emails`
 
-Delete emails permanently.
+Delete emails permanently (cannot be undone). Prefer moving to Trash via
+`move_emails` for recoverable deletion.
 
 **Parameters:**
 
@@ -160,30 +216,33 @@ Delete emails permanently.
 
 #### `send_email`
 
-Send a new email.
+Send a new email. Requires either `textBody` or `htmlBody` (or both).
 
 **Parameters:**
 
-- `to`: Array of recipients with `name` and `email`
+- `to`: Array of recipients (`name` optional, `email` required)
 - `cc` (optional): Array of CC recipients
 - `bcc` (optional): Array of BCC recipients
 - `subject`: Email subject
 - `textBody` (optional): Plain text body
 - `htmlBody` (optional): HTML body
-- `identityId` (optional): Identity to send from
+- `identityId` (optional): JMAP identity ID to send from (uses server default if
+  omitted)
 
 #### `reply_to_email`
 
-Reply to an existing email.
+Reply to an existing email. Automatically sets To/CC, Re: subject prefix, and
+threading headers (In-Reply-To, References).
 
 **Parameters:**
 
 - `emailId`: ID of email to reply to
-- `replyAll` (optional): Reply to all recipients (default: false)
-- `subject` (optional): Custom reply subject
+- `replyAll` (optional): Include all original recipients (default: false)
+- `subject` (optional): Custom reply subject (defaults to `Re: <original>`)
 - `textBody` (optional): Plain text body
 - `htmlBody` (optional): HTML body
-- `identityId` (optional): Identity to send from
+- `identityId` (optional): JMAP identity ID to send from (uses server default if
+  omitted)
 
 ## JMAP Server Compatibility
 
@@ -199,14 +258,16 @@ This server should work with any JMAP-compliant email server, including:
 ### Running in Development
 
 ```bash
-deno run --allow-env --allow-net --watch src/mod.ts
+just watch          # Run with file watching
+just start          # Run without watching
 ```
 
 ### Testing
 
 ```bash
-# Test connection
-deno run --allow-env --allow-net src/mod.ts
+just test           # Run all tests
+just check          # Format check + lint + type check
+just fmt            # Auto-format code
 ```
 
 ## Architecture
