@@ -48,7 +48,7 @@ export function registerEmailSubmissionTools(
     "send_email",
     "Send a new email. Requires either textBody or htmlBody (or both). The identityId parameter is optional — if omitted, the server uses the default sending identity.",
     SendEmailSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof SendEmailSchema>) => {
       try {
         if (!args.textBody && !args.htmlBody) {
           throw new Error("Either textBody or htmlBody must be provided");
@@ -134,7 +134,7 @@ export function registerEmailSubmissionTools(
     "reply_to_email",
     "Reply to an existing email. Automatically sets correct To/CC, subject (Re: prefix), and threading headers (In-Reply-To, References). Use replyAll=true to include all original recipients. The identityId parameter is optional — if omitted, the server uses the default sending identity.",
     ReplyToEmailSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof ReplyToEmailSchema>) => {
       try {
         if (!args.textBody && !args.htmlBody) {
           throw new Error("Either textBody or htmlBody must be provided");

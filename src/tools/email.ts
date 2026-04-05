@@ -267,7 +267,7 @@ export function registerEmailTools(
     "search_emails",
     "Search emails with filters (text, sender/recipient, dates, keywords). All filters are AND'd together. Returns only email IDs — use get_emails to fetch full content. For listing emails, request only the properties you need (e.g., ['id', 'subject', 'from', 'receivedAt', 'preview'] for a summary). Results are paginated: each response includes `total` (total matching emails), `position` (current offset), and `hasMore` (boolean). To get the next page, call again with `position` set to the current `position + ids.length`. Do NOT fetch all pages unless explicitly asked — the first page is usually sufficient. Also returns `queryState` for incremental sync via get_search_updates.",
     SearchEmailsSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof SearchEmailsSchema>) => {
       try {
         const filter = buildEmailFilter(args);
 
@@ -322,7 +322,7 @@ export function registerEmailTools(
     "get_mailboxes",
     "Get list of mailboxes/folders with their IDs, names, and metadata. Call this first to get mailbox IDs needed for search_emails (inMailbox filter) and move_emails (mailboxId). Common mailbox names: Inbox, Drafts, Sent, Trash, Archive, Spam/Junk. Results are paginated - use position parameter for pagination.",
     GetMailboxesSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof GetMailboxesSchema>) => {
       try {
         let filter: FilterCondition<MailboxFilterCondition> | undefined;
         if (args.parentId) {
@@ -377,7 +377,7 @@ export function registerEmailTools(
     "get_emails",
     "Get specific emails by their IDs. Use the `properties` parameter to request only what you need — requesting all properties returns large payloads. Recommended property sets: summary: ['id', 'subject', 'from', 'to', 'receivedAt', 'preview', 'keywords', 'mailboxIds'], full read: ['id', 'subject', 'from', 'to', 'cc', 'receivedAt', 'bodyValues', 'textBody', 'htmlBody']. IMPORTANT: to get body content, you must include 'bodyValues' AND at least one of 'textBody' or 'htmlBody' in properties. Returns `state` for incremental sync via get_email_changes.",
     GetEmailsSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof GetEmailsSchema>) => {
       try {
         const [result] = await jam.api.Email.get(
           {
@@ -420,7 +420,7 @@ export function registerEmailTools(
     "get_threads",
     "Get email threads by their IDs. Thread IDs are available from get_emails responses (threadId property). Returns a list of email IDs in each thread — use get_emails on those IDs to fetch the actual email content.",
     GetThreadsSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof GetThreadsSchema>) => {
       try {
         const [result] = await jam.api.Thread.get({
           accountId,
@@ -459,7 +459,7 @@ export function registerEmailTools(
     "get_email_changes",
     "Get IDs of emails created, updated, or destroyed since a previous state. Use the state string from a get_emails response. Supports optional auto-fetching of full email details. If the state is too old, falls back with an error suggesting a fresh search_emails call.",
     GetEmailChangesSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof GetEmailChangesSchema>) => {
       try {
         const [changesResult] = await jam.api.Email.changes({
           accountId,
@@ -539,7 +539,7 @@ export function registerEmailTools(
     "get_search_updates",
     "Get changes within a previous search query since its last queryState. You MUST pass the same filter parameters as the original search_emails call. Returns added and removed email IDs relative to that search.",
     GetSearchUpdatesSchema.shape,
-    async (args) => {
+    async (args: z.infer<typeof GetSearchUpdatesSchema>) => {
       try {
         const filter = buildEmailFilter(args);
 
@@ -606,7 +606,7 @@ export function registerEmailTools(
       "mark_emails",
       "Mark emails as read/unread or flagged/unflagged. You can update multiple keywords at once.",
       MarkEmailsSchema.shape,
-      async (args) => {
+      async (args: z.infer<typeof MarkEmailsSchema>) => {
         try {
           const updates: Record<string, EmailCreate> = {};
 
@@ -660,7 +660,7 @@ export function registerEmailTools(
       "move_emails",
       "Move emails to a different mailbox. Requires a mailbox ID — use get_mailboxes first to find the target mailbox ID by name.",
       MoveEmailsSchema.shape,
-      async (args) => {
+      async (args: z.infer<typeof MoveEmailsSchema>) => {
         try {
           const updates: Record<string, EmailCreate> = {};
 
@@ -707,7 +707,7 @@ export function registerEmailTools(
       "delete_emails",
       "Delete emails permanently. This action cannot be undone. Prefer move_emails to Trash mailbox for safer deletion — use this only when permanent deletion is explicitly requested.",
       DeleteEmailsSchema.shape,
-      async (args) => {
+      async (args: z.infer<typeof DeleteEmailsSchema>) => {
         try {
           const [result] = await jam.api.Email.set({
             accountId,
