@@ -46,7 +46,7 @@ export const SearchEmailsSchema = z.object({
     "At least one Email (including this one) in the same Thread as this Email must have the given keyword to match the condition.",
   ),
   body: z.string().optional().describe(
-    "The server MAY exclude MIME body parts with content media types other than text/* and message/* from consideration in search matching. Care should be taken to match based on the text content actually presented to an end user by viewers for that media type or otherwise identified as appropriate for search indexing. Matching document metadata uninteresting to an end user (e.g., markup tag and attribute names) is undesirable.",
+    "Search within email body text content only (excludes headers). Unlike 'query' which searches all fields, this targets just the message body.",
   ),
 });
 
@@ -94,7 +94,7 @@ export const GetEmailsSchema = z.object({
       "preview",
     ] as const satisfies Array<keyof Email>,
   )).optional().describe(
-    "Specific Email properties to return (default: all).",
+    "Specific Email properties to return. ALWAYS specify to avoid large responses. Common sets: summary=['id','subject','from','to','receivedAt','preview'], full=['id','subject','from','to','cc','receivedAt','bodyValues','textBody','htmlBody','keywords','mailboxIds']. Note: 'bodyValues' alone won't return content — also include 'textBody' and/or 'htmlBody'.",
   ),
 });
 
@@ -129,7 +129,92 @@ export const DeleteEmailsSchema = z.object({
   ),
 });
 
-const buildEmailFilter = (args: z.infer<typeof SearchEmailsSchema>) => {
+export const GetEmailChangesSchema = z.object({
+  sinceState: z.string().describe(
+    "The state string from a previous get_emails response. The server will return all changes since this state.",
+  ),
+  maxChanges: z.number().min(1).max(500).optional().describe(
+    "Maximum number of changes to return. Server may return fewer.",
+  ),
+  fetchEmails: z.boolean().default(false).describe(
+    "If true, automatically fetch full details for created and updated email IDs.",
+  ),
+  properties: z.array(z.enum(
+    [
+      "id",
+      "blobId",
+      "threadId",
+      "mailboxIds",
+      "keywords",
+      "size",
+      "receivedAt",
+      "headers",
+      "messageId",
+      "inReplyTo",
+      "references",
+      "sender",
+      "from",
+      "to",
+      "cc",
+      "bcc",
+      "replyTo",
+      "subject",
+      "sentAt",
+      "bodyStructure",
+      "bodyValues",
+      "textBody",
+      "htmlBody",
+      "attachments",
+      "hasAttachment",
+      "preview",
+    ] as const satisfies Array<keyof Email>,
+  )).optional().describe(
+    "Email properties to fetch when fetchEmails is true. Defaults to all properties.",
+  ),
+});
+
+export const GetSearchUpdatesSchema = z.object({
+  sinceQueryState: z.string().describe(
+    "The queryState string from a previous search_emails response. Must be used with the same filter parameters as the original search.",
+  ),
+  query: z.string().optional().describe(
+    "Text search query to find in email content",
+  ),
+  from: z.string().optional().describe("Email address to filter messages from"),
+  to: z.string().optional().describe("Email address to filter messages to"),
+  subject: z.string().optional().describe(
+    "Text to search for in email subjects",
+  ),
+  inMailbox: z.string().optional().describe("Mailbox ID to search within"),
+  hasKeyword: z.string().optional().describe(
+    "Keyword to filter by (e.g., '$seen', '$flagged')",
+  ),
+  notKeyword: z.string().optional().describe(
+    "Keyword to exclude (e.g., '$seen', '$draft')",
+  ),
+  before: z.string().datetime().optional().describe(
+    "Only return emails before this date (ISO datetime)",
+  ),
+  after: z.string().datetime().optional().describe(
+    "Only return emails after this date (ISO datetime)",
+  ),
+  allInThreadHaveKeyword: z.string().optional().describe(
+    "All Emails in the same Thread must have the given keyword to match the condition.",
+  ),
+  someInThreadHaveKeyword: z.string().optional().describe(
+    "At least one Email in the same Thread must have the given keyword to match the condition.",
+  ),
+  body: z.string().optional().describe(
+    "Search in email body content.",
+  ),
+  maxChanges: z.number().min(1).max(500).optional().describe(
+    "Maximum number of changes to return.",
+  ),
+});
+
+const buildEmailFilter = (
+  args: Partial<z.infer<typeof SearchEmailsSchema>>,
+) => {
   const filter: EmailFilterCondition = {};
 
   if (args.query) {
@@ -180,7 +265,7 @@ export function registerEmailTools(
 ) {
   server.tool(
     "search_emails",
-    "Search emails with various filters including text search, sender/recipient filters, date ranges, and keywords. Results are paginated - use position parameter for pagination.",
+    "Search emails with filters (text, sender/recipient, dates, keywords). All filters are AND'd together. Returns only email IDs — use get_emails to fetch full content. For listing emails, request only the properties you need (e.g., ['id', 'subject', 'from', 'receivedAt', 'preview'] for a summary). Results are paginated: each response includes `total` (total matching emails), `position` (current offset), and `hasMore` (boolean). To get the next page, call again with `position` set to the current `position + ids.length`. Do NOT fetch all pages unless explicitly asked — the first page is usually sufficient. Also returns `queryState` for incremental sync via get_search_updates.",
     SearchEmailsSchema.shape,
     async (args) => {
       try {
@@ -203,10 +288,16 @@ export function registerEmailTools(
                   ids: result.ids,
                   total: result.total,
                   position: result.position,
-                  queryState: result.queryState,
-                  canCalculateChanges: result.canCalculateChanges,
+                  nextPosition: result.position + result.ids.length,
                   hasMore:
                     result.position + result.ids.length < (result.total || 0),
+                  _pagination: `Showing ${result.ids.length} of ${
+                    result.total ?? "unknown"
+                  } results (position ${result.position}–${
+                    result.position + result.ids.length - 1
+                  })`,
+                  queryState: result.queryState,
+                  canCalculateChanges: result.canCalculateChanges,
                 },
                 null,
                 2,
@@ -229,7 +320,7 @@ export function registerEmailTools(
 
   server.tool(
     "get_mailboxes",
-    "Get list of mailboxes/folders. Results are paginated - use position parameter for pagination.",
+    "Get list of mailboxes/folders with their IDs, names, and metadata. Call this first to get mailbox IDs needed for search_emails (inMailbox filter) and move_emails (mailboxId). Common mailbox names: Inbox, Drafts, Sent, Trash, Archive, Spam/Junk. Results are paginated - use position parameter for pagination.",
     GetMailboxesSchema.shape,
     async (args) => {
       try {
@@ -284,7 +375,7 @@ export function registerEmailTools(
 
   server.tool(
     "get_emails",
-    "Get specific emails by their IDs. Returns full email details including headers, body, and attachments.",
+    "Get specific emails by their IDs. Use the `properties` parameter to request only what you need — requesting all properties returns large payloads. Recommended property sets: summary: ['id', 'subject', 'from', 'to', 'receivedAt', 'preview', 'keywords', 'mailboxIds'], full read: ['id', 'subject', 'from', 'to', 'cc', 'receivedAt', 'bodyValues', 'textBody', 'htmlBody']. IMPORTANT: to get body content, you must include 'bodyValues' AND at least one of 'textBody' or 'htmlBody' in properties. Returns `state` for incremental sync via get_email_changes.",
     GetEmailsSchema.shape,
     async (args) => {
       try {
@@ -304,6 +395,7 @@ export function registerEmailTools(
                 {
                   emails: result.list,
                   notFound: result.notFound,
+                  state: result.state,
                 },
                 null,
                 2,
@@ -326,7 +418,7 @@ export function registerEmailTools(
 
   server.tool(
     "get_threads",
-    "Get email threads by their IDs. A thread contains multiple related emails.",
+    "Get email threads by their IDs. Thread IDs are available from get_emails responses (threadId property). Returns a list of email IDs in each thread — use get_emails on those IDs to fetch the actual email content.",
     GetThreadsSchema.shape,
     async (args) => {
       try {
@@ -356,6 +448,152 @@ export function registerEmailTools(
             {
               type: "text",
               text: `Error getting threads: ${formatError(error)}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.tool(
+    "get_email_changes",
+    "Get IDs of emails created, updated, or destroyed since a previous state. Use the state string from a get_emails response. Supports optional auto-fetching of full email details. If the state is too old, falls back with an error suggesting a fresh search_emails call.",
+    GetEmailChangesSchema.shape,
+    async (args) => {
+      try {
+        const [changesResult] = await jam.api.Email.changes({
+          accountId,
+          sinceState: args.sinceState,
+          maxChanges: args.maxChanges,
+        });
+
+        const response: Record<string, unknown> = {
+          oldState: changesResult.oldState,
+          newState: changesResult.newState,
+          hasMoreChanges: changesResult.hasMoreChanges,
+          created: changesResult.created,
+          updated: changesResult.updated,
+          destroyed: changesResult.destroyed,
+        };
+
+        if (
+          args.fetchEmails &&
+          (changesResult.created.length > 0 ||
+            changesResult.updated.length > 0)
+        ) {
+          const idsToFetch = [
+            ...changesResult.created,
+            ...changesResult.updated,
+          ];
+          const [emailResult] = await jam.api.Email.get(
+            {
+              accountId,
+              ids: idsToFetch,
+              properties: args.properties,
+            } satisfies GetEmailArguments,
+          );
+          response.emails = emailResult.list;
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorStr = formatError(error);
+        if (errorStr.includes("cannotCalculateChanges")) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    error: "cannotCalculateChanges",
+                    message:
+                      "The provided state is too old or the server cannot calculate changes. Please perform a fresh search_emails call to get the current state.",
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error getting email changes: ${errorStr}`,
+            },
+          ],
+        };
+      }
+    },
+  );
+
+  server.tool(
+    "get_search_updates",
+    "Get changes within a previous search query since its last queryState. You MUST pass the same filter parameters as the original search_emails call. Returns added and removed email IDs relative to that search.",
+    GetSearchUpdatesSchema.shape,
+    async (args) => {
+      try {
+        const filter = buildEmailFilter(args);
+
+        const [result] = await jam.api.Email.queryChanges({
+          accountId,
+          sinceQueryState: args.sinceQueryState,
+          filter,
+          sort: [{ property: "receivedAt", isAscending: false }],
+          maxChanges: args.maxChanges,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  oldQueryState: result.oldQueryState,
+                  newQueryState: result.newQueryState,
+                  added: result.added,
+                  removed: result.removed,
+                  total: result.total,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorStr = formatError(error);
+        if (errorStr.includes("cannotCalculateChanges")) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    error: "cannotCalculateChanges",
+                    message:
+                      "The provided queryState is too old or the server cannot calculate changes. Please perform a fresh search_emails call to get the current state.",
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error getting search updates: ${errorStr}`,
             },
           ],
         };
@@ -420,7 +658,7 @@ export function registerEmailTools(
 
     server.tool(
       "move_emails",
-      "Move emails from their current mailbox to a different mailbox.",
+      "Move emails to a different mailbox. Requires a mailbox ID — use get_mailboxes first to find the target mailbox ID by name.",
       MoveEmailsSchema.shape,
       async (args) => {
         try {
@@ -467,7 +705,7 @@ export function registerEmailTools(
 
     server.tool(
       "delete_emails",
-      "Delete emails permanently. This action cannot be undone.",
+      "Delete emails permanently. This action cannot be undone. Prefer move_emails to Trash mailbox for safer deletion — use this only when permanent deletion is explicitly requested.",
       DeleteEmailsSchema.shape,
       async (args) => {
         try {

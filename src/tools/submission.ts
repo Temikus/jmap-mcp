@@ -21,7 +21,9 @@ export const SendEmailSchema = z.object({
   subject: z.string().describe("Email subject"),
   textBody: z.string().optional().describe("Plain text body"),
   htmlBody: z.string().optional().describe("HTML body"),
-  identityId: z.string().optional().describe("Identity to send from"),
+  identityId: z.string().optional().describe(
+    "JMAP Identity ID to send from. If omitted, the server's default identity is used. Most users have a single identity and can leave this empty.",
+  ),
 });
 
 export const ReplyToEmailSchema = z.object({
@@ -32,7 +34,9 @@ export const ReplyToEmailSchema = z.object({
   ),
   textBody: z.string().optional().describe("Plain text body"),
   htmlBody: z.string().optional().describe("HTML body"),
-  identityId: z.string().optional().describe("Identity to send from"),
+  identityId: z.string().optional().describe(
+    "JMAP Identity ID to send from. If omitted, the server's default identity is used. Most users have a single identity and can leave this empty.",
+  ),
 });
 
 export function registerEmailSubmissionTools(
@@ -42,7 +46,7 @@ export function registerEmailSubmissionTools(
 ) {
   server.tool(
     "send_email",
-    "Send a new email. Requires either textBody or htmlBody (or both).",
+    "Send a new email. Requires either textBody or htmlBody (or both). The identityId parameter is optional — if omitted, the server uses the default sending identity.",
     SendEmailSchema.shape,
     async (args) => {
       try {
@@ -128,7 +132,7 @@ export function registerEmailSubmissionTools(
 
   server.tool(
     "reply_to_email",
-    "Reply to an existing email. Can reply to sender only or reply to all recipients.",
+    "Reply to an existing email. Automatically sets correct To/CC, subject (Re: prefix), and threading headers (In-Reply-To, References). Use replyAll=true to include all original recipients. The identityId parameter is optional — if omitted, the server uses the default sending identity.",
     ReplyToEmailSchema.shape,
     async (args) => {
       try {
