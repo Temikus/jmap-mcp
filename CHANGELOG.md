@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/wyattjoh/jmap-mcp/compare/jmap-mcp-v0.4.0...jmap-mcp-v0.5.0) (2026-04-05)
+
+
+### Features
+
+* add Claude Code plugin with marketplace auto-publishing ([bfcc71d](https://github.com/wyattjoh/jmap-mcp/commit/bfcc71d03dc78ed34edf13d4596dc248b2cd7a30))
+
+
+### Bug Fixes
+
+* add explicit type annotations to tool callback parameters ([79c13b4](https://github.com/wyattjoh/jmap-mcp/commit/79c13b481ab017e9b7f2aaf067d2c2238e1ca528))
+
 ## [0.4.0](https://github.com/wyattjoh/jmap-mcp/compare/jmap-mcp-v0.3.0...jmap-mcp-v0.4.0) (2026-04-05)
 
 
