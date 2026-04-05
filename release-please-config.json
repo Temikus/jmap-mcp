@@ -11,6 +11,16 @@
           "jsonpath": "$.version"
         },
         {
+          "type": "json",
+          "path": ".claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": ".claude-plugin/plugin.json",
+          "jsonpath": "$.mcpServers.jmap.args[3]"
+        },
+        {
           "type": "generic",
           "path": "README.md"
         }

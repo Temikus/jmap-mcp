@@ -1,0 +1,19 @@
+{
+  "name": "jmap-mcp",
+  "version": "0.4.0",
+  "description": "MCP server for JMAP email management",
+  "author": {
+    "name": "Wyatt Johnson"
+  },
+  "mcpServers": {
+    "jmap": {
+      "command": "deno",
+      "args": [
+        "run",
+        "--allow-env",
+        "--allow-net",
+        "jsr:@wyattjoh/jmap-mcp@0.4.0"
+      ]
+    }
+  }
+}
