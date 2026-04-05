@@ -1,6 +1,6 @@
 {
   "name": "@temikus/jmap-mcp",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "license": "MIT",
   "exports": "./src/mod.ts",
   "publish": {
@@ -24,6 +24,6 @@
   "exclude": [".repositories"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/wyattjoh/jmap-mcp.git"
+    "url": "https://github.com/Temikus/jmap-mcp.git"
   }
 }
