@@ -5,10 +5,17 @@ FROM docker.io/denoland/deno:alpine-2.3.2
 ARG JMAP_MCP_VERSION
 ENV JMAP_MCP_VERSION=${JMAP_MCP_VERSION}
 
-LABEL org.opencontainers.image.title="jmap-mcp" \
-      org.opencontainers.image.description="MCP server for JMAP email management" \
+LABEL org.opencontainers.image.title="jmap-mcp-proxy" \
+      org.opencontainers.image.description="MCP server for JMAP email management (with SSE transport via mcp-proxy)" \
       org.opencontainers.image.source="https://github.com/Temikus/jmap-mcp" \
       org.opencontainers.image.licenses="MIT"
+
+# Install Python runtime, catatonit (PID 1 init for SSE mode), and mcp-proxy
+RUN apk add --no-cache python3 py3-pip catatonit && \
+    python3 -m venv /opt/mcp-proxy && \
+    /opt/mcp-proxy/bin/pip install --no-cache-dir mcp-proxy
+
+ENV PATH="/opt/mcp-proxy/bin:${PATH}"
 
 # Pre-cache the JMAP MCP package from JSR at build time for instant startup
 RUN test -n "${JMAP_MCP_VERSION}" || \

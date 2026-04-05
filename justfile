@@ -26,6 +26,20 @@ check:
 fmt:
     deno fmt
 
+# Build plain Docker image locally
+docker-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version=$(grep '"version"' deno.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+    docker build --build-arg JMAP_MCP_VERSION="$version" -t ghcr.io/temikus/jmap-mcp:"$version" -t ghcr.io/temikus/jmap-mcp:latest -f Dockerfile .
+
+# Build mcp-proxy Docker image locally
+docker-build-proxy:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version=$(grep '"version"' deno.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+    docker build --build-arg JMAP_MCP_VERSION="$version" -t ghcr.io/temikus/jmap-mcp:"$version"-proxy -t ghcr.io/temikus/jmap-mcp:latest-proxy -f Dockerfile.mcp-proxy .
+
 # Dry-run publish (validate without publishing)
 publish-dry:
     deno publish --dry-run

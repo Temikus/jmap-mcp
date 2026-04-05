@@ -2,6 +2,10 @@
 .github
 .vscode
 .repositories
+src/
+deno.json
+deno.lock
+justfile
 *.md
 !README.md
 LICENSE
