@@ -5,6 +5,20 @@
   "author": {
     "name": "Wyatt Johnson"
   },
+  "userConfig": {
+    "jmap_session_url": {
+      "description": "JMAP server session URL (e.g., https://api.fastmail.com/jmap/session)",
+      "sensitive": false
+    },
+    "jmap_bearer_token": {
+      "description": "Bearer token for JMAP authentication",
+      "sensitive": true
+    },
+    "jmap_account_id": {
+      "description": "JMAP account ID (optional, auto-detected if not provided)",
+      "sensitive": false
+    }
+  },
   "mcpServers": {
     "jmap": {
       "command": "deno",
@@ -13,7 +27,12 @@
         "--allow-env",
         "--allow-net",
         "jsr:@wyattjoh/jmap-mcp@0.5.0"
-      ]
+      ],
+      "env": {
+        "JMAP_SESSION_URL": "${user_config.jmap_session_url}",
+        "JMAP_BEARER_TOKEN": "${user_config.jmap_bearer_token}",
+        "JMAP_ACCOUNT_ID": "${user_config.jmap_account_id}"
+      }
     }
   }
 }
