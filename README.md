@@ -53,6 +53,17 @@ library.
 
 ## Installation
 
+### Claude Code Plugin (Recommended)
+
+Install via the plugin marketplace:
+
+```shell
+/plugin marketplace add wyattjoh/claude-code-marketplace
+/plugin install jmap-mcp@wyattjoh-marketplace
+```
+
+Then configure the required environment variables in your MCP server settings.
+
 ### Prerequisites
 
 - [Deno](https://deno.land/) v1.40 or later
