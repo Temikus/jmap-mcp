@@ -7,14 +7,20 @@
   },
   "userConfig": {
     "jmap_session_url": {
+      "title": "JMAP Session URL",
+      "type": "string",
       "description": "JMAP server session URL (e.g., https://api.fastmail.com/jmap/session)",
       "sensitive": false
     },
     "jmap_bearer_token": {
+      "title": "JMAP Bearer Token",
+      "type": "string",
       "description": "Bearer token for JMAP authentication",
       "sensitive": true
     },
     "jmap_account_id": {
+      "title": "JMAP Account ID",
+      "type": "string",
       "description": "JMAP account ID (optional, auto-detected if not provided)",
       "sensitive": false
     }
