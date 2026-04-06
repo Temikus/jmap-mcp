@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/wyattjoh/jmap-mcp/compare/jmap-mcp-v0.6.0...jmap-mcp-v0.6.1) (2026-04-06)
+
+
+### Bug Fixes
+
+* add required type and title fields to userConfig entries ([1c5d60c](https://github.com/wyattjoh/jmap-mcp/commit/1c5d60cde183bda50505365107d602ff4f9e5392))
+
 ## [0.6.0](https://github.com/wyattjoh/jmap-mcp/compare/jmap-mcp-v0.5.0...jmap-mcp-v0.6.0) (2026-04-06)
 
 
