@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.7.0](https://github.com/Temikus/jmap-mcp/compare/jmap-mcp-v0.6.1...jmap-mcp-v0.7.0) (2026-04-06)
+
+
+### Features
+
+* add Claude Code plugin with marketplace auto-publishing ([bfcc71d](https://github.com/Temikus/jmap-mcp/commit/bfcc71d03dc78ed34edf13d4596dc248b2cd7a30))
+* Add incremental email sync tools ([e28eafc](https://github.com/Temikus/jmap-mcp/commit/e28eafcc83372d627f551c4938859627991ebb4c))
+* add incremental email sync tools (get_email_changes, get_search_updates) ([ace0f56](https://github.com/Temikus/jmap-mcp/commit/ace0f5622b75f32720ce734241e9cb93149ebcca))
+* add userConfig for JMAP credentials in plugin manifest ([cdc352f](https://github.com/Temikus/jmap-mcp/commit/cdc352f16c02300b36bb7c883a6da84bf3f92a79))
+* improve search_emails pagination clarity for AI agents ([da02d78](https://github.com/Temikus/jmap-mcp/commit/da02d7884f24fc1b0bd626c46fcee9441e9b76f9))
+* initial implementation of JMAP MCP server ([2d11f01](https://github.com/Temikus/jmap-mcp/commit/2d11f01cc8773325c48de74b8b835763bff3a172))
+
+
+### Bug Fixes
+
+* add explicit type annotations to tool callback parameters ([79c13b4](https://github.com/Temikus/jmap-mcp/commit/79c13b481ab017e9b7f2aaf067d2c2238e1ca528))
+* add required type and title fields to userConfig entries ([1c5d60c](https://github.com/Temikus/jmap-mcp/commit/1c5d60cde183bda50505365107d602ff4f9e5392))
+* added type assersion ([90f5988](https://github.com/Temikus/jmap-mcp/commit/90f5988450722e9ba08dabe500ee6bc8de53a233))
+* **ci:** remove npm ecosystem from dependabot (unsupported for Deno) ([2ed3d13](https://github.com/Temikus/jmap-mcp/commit/2ed3d13ee615b64b7b04f723d43b27fa0d9bb35c))
+
 ## [0.6.1](https://github.com/wyattjoh/jmap-mcp/compare/jmap-mcp-v0.6.0...jmap-mcp-v0.6.1) (2026-04-06)
 
 
