@@ -66,4 +66,5 @@ jobs:
           plugin-name: jmap-mcp
           version: ${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}.${{ needs.release-please.outputs.patch }}
           ref: ${{ needs.release-please.outputs.tag_name }}
+          sha: ${{ github.sha }}
           token: ${{ secrets.MARKETPLACE_PAT }}
